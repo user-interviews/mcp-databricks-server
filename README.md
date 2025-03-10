@@ -14,10 +14,23 @@ It is even better when coupled with Unity Catalog Metadata.
 
 ## Setup
 
+### System Requirements
+
+- Python 3.10+
+- If you plan to install via `uv`, ensure it's [installed](https://docs.astral.sh/uv/getting-started/installation/#__tabbed_1_1)
+
+### Installation
+
 1. Install the required dependencies:
 
 ```bash
 pip install -r requirements.txt
+```
+
+Or if using `uv`:
+
+```bash
+uv pip install -r requirements.txt
 ```
 
 2. Set up your environment variables:
@@ -63,13 +76,64 @@ For security best practices, consider regularly rotating your access tokens and 
 
 ## Running the Server
 
-To run the server:
+### Standalone Mode
+
+To run the server in standalone mode:
 
 ```bash
 python main.py
 ```
 
 This will start the MCP server using stdio transport, which can be used with Agent Composer or other MCP clients.
+
+### Using with Cursor
+
+To use this MCP server with [Cursor](https://cursor.sh/), you need to configure it in your Cursor settings:
+
+1. Create a `.cursor` directory in your home directory if it doesn't already exist
+2. Create or edit the `mcp.json` file in that directory:
+
+```bash
+mkdir -p ~/.cursor
+touch ~/.cursor/mcp.json
+```
+
+3. Add the following configuration to the `mcp.json` file, replacing the directory path with the actual path to where you've installed this server:
+
+```json
+{
+    "mcpServers": {
+        "databricks": {
+            "command": "uv",
+            "args": [
+                "--directory",
+                "/path/to/your/mcp-databricks-server",
+                "run",
+                "main.py"
+            ]
+        }
+    }
+}
+```
+
+If you're not using `uv`, you can use `python` instead:
+
+```json
+{
+    "mcpServers": {
+        "databricks": {
+            "command": "python",
+            "args": [
+                "/path/to/your/mcp-databricks-server/main.py"
+            ]
+        }
+    }
+}
+```
+
+4. Restart Cursor to apply the changes
+
+Now you can use the Databricks MCP server directly within Cursor's AI assistant.
 
 ## Available Tools
 
