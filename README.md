@@ -1,6 +1,9 @@
 # Databricks MCP Server
 
 This is a Model Context Protocol (MCP) server for executing SQL queries against Databricks using the Statement Execution API.
+It can retrieve data by performing SQL requests using the Databricks API.
+When used in an Agent mode, it can successfully iterate over a number of requests to perform complex tasks.
+It is even better when coupled with Unity Catalog Metadata.
 
 ## Features
 
@@ -38,6 +41,25 @@ pip install -r requirements.txt
    ```
 
 You can find your SQL warehouse ID in the Databricks UI under SQL Warehouses.
+
+## Permissions Requirements
+
+Before using this MCP server, ensure that:
+
+1. **SQL Warehouse Permissions**: The user associated with the provided token must have appropriate permissions to access the specified SQL warehouse. You can configure warehouse permissions in the Databricks UI under SQL Warehouses > [Your Warehouse] > Permissions.
+
+2. **Token Permissions**: The personal access token used should have the minimum necessary permissions to perform the required operations. It is strongly recommended to:
+   - Create a dedicated token specifically for this application
+   - Grant read-only permissions where possible to limit security risks
+   - Avoid using tokens with workspace-wide admin privileges
+
+3. **Data Access Permissions**: The user associated with the token must have appropriate permissions to access the catalogs, schemas, and tables that will be queried.
+
+To set SQL warehouse permissions via the Databricks REST API, you can use:
+- `GET /api/2.0/sql/permissions/warehouses/{warehouse_id}` to check current permissions
+- `PATCH /api/2.0/sql/permissions/warehouses/{warehouse_id}` to update permissions
+
+For security best practices, consider regularly rotating your access tokens and auditing query history to monitor usage.
 
 ## Running the Server
 
