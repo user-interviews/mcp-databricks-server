@@ -52,12 +52,12 @@ def format_query_results(result: Dict[str, Any]) -> str:
         if result['result'].get('data_array'):
             raw_rows = result['result']['data_array']
             for row_list in raw_rows:
-        row_values = []
+                row_values = []
                 for value in row_list:
-            if value is None:
-                row_values.append("NULL")
-            else:
-                row_values.append(str(value))
+                    if value is None:
+                        row_values.append("NULL")
+                    else:
+                        row_values.append(str(value))
                 data_rows_formatted.append(" | ".join(row_values))
     else:
         # Fallback if structure is completely unrecognized or an error dict itself

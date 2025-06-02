@@ -18,7 +18,7 @@
 
 ## Motivation
 
-Databricks Unity Catalog (UC) allows for detailed documentation of your data assets, including catalogs, schemas, tables, and columns. Documenting these assets thoroughly requires an investment of time. One common question is: what are the practical benefits of this detailed metadata entry, especially when the goal is to enable an AI agent to perform data tasks?
+Databricks Unity Catalog (UC) allows for detailed documentation of your data assets, including catalogs, schemas, tables, and columns. Documenting these assets thoroughly requires an investment of time. One common question is: what are the practical benefits of this detailed metadata entry?
 
 This MCP server provides a strong justification for that effort. It enables Large Language Models (LLMs) to directly access and utilize this Unity Catalog metadata. The more comprehensively your data is described in UC, the more effectively an LLM agent can understand your Databricks environment. This deeper understanding is crucial for the agent to autonomously construct more intelligent and accurate SQL queries to fulfill data requests.
 
@@ -210,6 +210,11 @@ Example using `python`:
 Restart Cursor to apply the changes. You can then use the `databricks` agent in Cursor.
 
 ## Example Usage Workflow (for an LLM Agent)
+
+This MCP server empowers an LLM agent to autonomously navigate your Databricks environment. The following screenshot illustrates a typical interaction where the agent iteratively explores schemas and tables, adapting its approach even when initial queries don't yield results, until it successfully retrieves the requested data.
+
+![Agent actively using MCP tools to find data](assets/agent_usage.png)
+*Fig 3: An LLM agent using the Databricks MCP tools, demonstrating iterative exploration and query refinement to locate specific page view data.*
 
 An agent might follow this kind of workflow:
 

@@ -53,7 +53,7 @@ async def describe_uc_table(full_table_name: str, include_lineage: Optional[bool
         details_markdown = await asyncio.to_thread(
             get_uc_table_details,
             full_table_name=full_table_name,
-            fetch_lineage=include_lineage
+            include_lineage=include_lineage
         )
         return details_markdown
     except ImportError as e:
