@@ -24,8 +24,8 @@ if not DATABRICKS_HOST or not DATABRICKS_TOKEN:
 sdk_config = Config(
     host=DATABRICKS_HOST,
     token=DATABRICKS_TOKEN,
-    http_timeout_seconds=30, 
-    retry_timeout_seconds=5
+    http_timeout_seconds=30,
+    retry_timeout_seconds=60
 )
 sdk_client = WorkspaceClient(config=sdk_config)
 
