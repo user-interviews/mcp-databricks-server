@@ -27,7 +27,22 @@ async def execute_sql_query(sql: str) -> str:
     """
     try:
         sdk_result = await asyncio.to_thread(execute_databricks_sql, sql_query=sql)
-        return format_query_results(sdk_result)
+        
+        status = sdk_result.get("status")
+        if status == "failed":
+            error_message = sdk_result.get("error", "Unknown query execution error.")
+            details = sdk_result.get("details", "No additional details provided.")
+            return f"SQL Query Failed: {error_message}\nDetails: {details}"
+        elif status == "error":
+            error_message = sdk_result.get("error", "Unknown error during SQL execution.")
+            details = sdk_result.get("details", "No additional details provided.")
+            return f"Error during SQL Execution: {error_message}\nDetails: {details}"
+        elif status == "success":
+            return format_query_results(sdk_result)
+        else:
+            # Should not happen if execute_databricks_sql always returns a known status
+            return f"Received an unexpected status from query execution: {status}. Result: {sdk_result}"
+            
     except Exception as e:
         return f"An unexpected error occurred while executing SQL query: {str(e)}"
 
