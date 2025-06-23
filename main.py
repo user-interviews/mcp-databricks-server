@@ -54,15 +54,36 @@ async def describe_uc_table(full_table_name: str, include_lineage: Optional[bool
     
     Use this tool to understand the structure (columns, data types, partitioning) of a single table.
     This is essential before constructing SQL queries against the table.
-    Optionally, it can include lineage information (upstream and downstream table dependencies).
-    Lineage helps in understanding data flow, potential impact of changes, and can aid in debugging issues
-    (e.g., if a table is empty, checking its upstream sources can be a diagnostic step).
+    
+    Optionally, it can include comprehensive lineage information that goes beyond traditional 
+    table-to-table dependencies:
+
+    **Table Lineage:**
+    - Upstream tables (tables this table reads from)
+    - Downstream tables (tables that read from this table)
+    
+    **Notebook & Job Lineage:**
+    - Notebooks that read from this table, including:
+      * Notebook name and workspace path
+      * Associated Databricks job information (job name, ID, task details)
+    - Notebooks that write to this table with the same detailed context
+    
+    **Use Cases:**
+    - Data impact analysis: understand what breaks if you modify this table
+    - Code discovery: find notebooks that process this data for further analysis
+    - Debugging: trace data flow issues by examining both table dependencies and processing code
+    - Documentation: understand the complete data ecosystem around a table
+
+    The lineage information allows LLMs and tools to subsequently fetch the actual notebook 
+    code content for deeper analysis of data transformations and business logic.
+
     The output is formatted in Markdown.
 
     Args:
         full_table_name: The fully qualified three-part name of the table (e.g., `catalog.schema.table`).
-        include_lineage: Set to True to fetch and include lineage. Defaults to False.
-                         Lineage helps understand data dependencies and aids debugging but may take longer to retrieve.
+        include_lineage: Set to True to fetch and include comprehensive lineage (tables, notebooks, jobs). 
+                         Defaults to False. May take longer to retrieve but provides rich context for 
+                         understanding data dependencies and enabling code exploration.
     """
     try:
         details_markdown = await asyncio.to_thread(

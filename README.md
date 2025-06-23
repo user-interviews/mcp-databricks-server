@@ -24,16 +24,22 @@ This MCP server provides a strong justification for that effort. It enables Larg
 
 ## Overview
 
-This Model Context Protocol (MCP) server is designed to interact with Databricks, with a strong focus on leveraging that Unity Catalog (UC) metadata. The primary goal is to equip an AI agent with a comprehensive set of tools, enabling it to become independent in answering questions about your data. By autonomously exploring UC, understanding data structures, and executing SQL queries, the agent can fulfill data requests without direct human intervention for each step.
-When used in an Agent mode, it can successfully iterate over a number of requests to perform complex tasks.
+This Model Context Protocol (MCP) server is designed to interact with Databricks, with a strong focus on leveraging Unity Catalog (UC) metadata and enabling comprehensive data lineage exploration. The primary goal is to equip an AI agent with a comprehensive set of tools, enabling it to become independent in answering questions about your data. By autonomously exploring UC, understanding data structures, analyzing data lineage (including notebook and job dependencies), and executing SQL queries, the agent can fulfill data requests without direct human intervention for each step.
+
+Beyond traditional catalog browsing, this server enables agents to discover and analyze the actual code that processes your data. Through enhanced lineage capabilities, agents can identify notebooks and jobs that read from or write to tables, then examine the actual transformation logic, business rules, and data quality checks implemented in those notebooks. This creates a powerful feedback loop where agents not only understand *what* data exists, but also *how* it's processed and transformed.
+
+When used in an Agent mode, it can successfully iterate over a number of requests to perform complex tasks, including data discovery, impact analysis, and code exploration.
 
 ## Practical Benefits of UC Metadata for AI Agents
 
-The tools provided by this MCP server are designed to parse and present the descriptions you've added to Unity Catalog. This offers tangible advantages for LLM-based agents, directly impacting their ability to generate useful SQL:
+The tools provided by this MCP server are designed to parse and present the descriptions you've added to Unity Catalog, while also enabling deep exploration of your data processing code. This offers tangible advantages for LLM-based agents, directly impacting their ability to generate useful SQL and understand your data ecosystem:
 
 *   **Clearer Data Context**: Agents can quickly understand the purpose of tables and columns, reducing ambiguity. This foundational understanding is the first step towards correct query formulation.
 *   **More Accurate Query Generation**: Access to descriptions, data types, and relationships helps agents construct SQL queries with greater precision and semantic correctness.
 *   **Efficient Data Exploration for Query Planning**: Metadata enables agents to navigate through catalogs and schemas more effectively, allowing them to identify the correct tables and columns to include in their SQL queries.
+*   **Comprehensive Data Lineage**: Beyond table-to-table relationships, agents can discover notebooks and jobs that process data, enabling impact analysis and debugging of data pipeline issues.
+*   **Code-Level Understanding**: Through notebook content exploration, agents can analyze actual transformation logic, business rules, and data quality checks, providing deeper insights into how data is processed and transformed.
+*   **End-to-End Data Flow Analysis**: Agents can trace data from raw ingestion through transformation pipelines to final consumption, understanding both the structure and the processing logic at each step.
 
 Well-documented metadata in Unity Catalog, when accessed via this server, allows an LLM agent to operate with better information and make more informed decisions, culminating in the generation of more effective SQL queries. For instance, schema descriptions help the agent identify relevant data sources for a query:
 
@@ -77,11 +83,14 @@ The server provides the following tools for navigating and understanding your Un
         *   `include_columns`: If True, lists tables with their columns. Defaults to False for a briefer summary.
 
 4.  `describe_uc_table(full_table_name: str, include_lineage: Optional[bool] = False) -> str`
-    *   **Description**: Provides a detailed description of a specific Unity Catalog table.
-    *   **When to use**: To understand the structure (columns, data types, partitioning) of a single table. This is essential before constructing SQL queries against the table. Optionally, it can include lineage information (upstream and downstream table dependencies). Lineage helps in understanding data flow, potential impact of changes, and can aid in debugging issues (e.g., if a table is empty, checking its upstream sources can be a diagnostic step).
+    *   **Description**: Provides a detailed description of a specific Unity Catalog table with comprehensive lineage capabilities.
+    *   **When to use**: To understand the structure (columns, data types, partitioning) of a single table. This is essential before constructing SQL queries against the table. Optionally, it can include comprehensive lineage information that goes beyond traditional table-to-table dependencies:
+        *   **Table Lineage**: Upstream tables (tables this table reads from) and downstream tables (tables that read from this table)
+        *   **Notebook & Job Lineage**: Notebooks that read from or write to this table, including notebook name, workspace path, associated Databricks job information (job name, ID, task details)
+        *   **Code Discovery**: The lineage provides notebook paths that enable the an agent to directly read notebook files within the current repo/workspace, allowing analysis of actual data transformation logic
     *   **Args**:
         *   `full_table_name`: The fully qualified three-part name of the table (e.g., `catalog.schema.table`).
-        *   `include_lineage`: Set to True to fetch and include lineage. Defaults to False. Lineage helps understand data dependencies and aids debugging but may take longer to retrieve.
+        *   `include_lineage`: Set to True to fetch comprehensive lineage (tables, notebooks, jobs). Defaults to False. May take longer to retrieve but provides rich context for understanding data dependencies and enabling code exploration.
 
 5.  `execute_sql_query(sql: str) -> str`
     *   **Note**: This is the same tool listed under "Core Capabilities" but is repeated here in the context of a typical agent workflow involving UC exploration followed by querying.
@@ -226,8 +235,12 @@ An agent might follow this kind of workflow:
     *   *Agent sees table names like `orders`, `customers`.* 
 4.  **Get detailed table structure (including columns for query building)**: `describe_uc_schema(catalog_name="prod_catalog", schema_name="sales_schema", include_columns=True)`
     *   *Alternatively, if a specific table is of interest:* `describe_uc_table(full_table_name="prod_catalog.sales_schema.orders")`
-5.  **Optionally, check lineage for a critical table**: `describe_uc_table(full_table_name="prod_catalog.sales_schema.orders", include_lineage=True)`
-6.  **Construct and execute a query**: `execute_sql_query(sql="SELECT customer_id, order_date, SUM(order_total) FROM prod_catalog.sales_schema.orders WHERE order_date > '2023-01-01' GROUP BY customer_id, order_date ORDER BY order_date DESC LIMIT 100")`
+5.  **Analyze data lineage and discover processing code**: `describe_uc_table(full_table_name="prod_catalog.sales_schema.orders", include_lineage=True)`
+    *   *Agent discovers upstream tables, downstream dependencies, and notebooks that process this data*
+    *   *For example, sees that `/Repos/production/etl/sales_processing.py` writes to this table*
+6.  **Examine data transformation logic**: *Agent directly reads the notebook file `/Repos/production/etl/sales_processing.py` within the IDE/repo*
+    *   *Agent analyzes the actual Python/SQL code to understand business rules, data quality checks, and transformation logic*
+7.  **Construct and execute a query**: `execute_sql_query(sql="SELECT customer_id, order_date, SUM(order_total) FROM prod_catalog.sales_schema.orders WHERE order_date > '2023-01-01' GROUP BY customer_id, order_date ORDER BY order_date DESC LIMIT 100")`
 
 ## Managing Metadata as Code with Terraform
 
