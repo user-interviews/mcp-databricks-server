@@ -338,8 +338,17 @@ def execute_databricks_sql(sql_query: str, wait_timeout: str = '50s') -> Dict[st
             return {"status": "failed", "error": f"Query execution failed with state: {response.status.state.value}", "details": error_message}
         else:
             return {"status": "failed", "error": "Query execution status unknown."}
+    except KeyboardInterrupt:
+        # Handle keyboard interrupt gracefully
+        print("SQL execution interrupted by user")
+        return {"status": "error", "error": "Query execution was interrupted by user."}
     except Exception as e:
-        return {"status": "error", "error": f"An error occurred during SQL execution: {str(e)}"}
+        error_msg = str(e)
+        # Check for common connection errors that might need reconnection
+        if "Connection" in error_msg or "timed out" in error_msg:
+            print(f"Connection error detected: {error_msg}")
+            return {"status": "error", "error": f"Connection error during SQL execution: {error_msg}. You may need to restart the MCP server."}
+        return {"status": "error", "error": f"An error occurred during SQL execution: {error_msg}"}
 
 def get_uc_table_details(full_table_name: str, include_lineage: bool = False) -> str:
     """

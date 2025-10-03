@@ -1,5 +1,7 @@
 from typing import Optional
 import asyncio
+import signal
+import sys
 from mcp.server.fastmcp import FastMCP
 from databricks_formatter import format_query_results
 from databricks_sdk_utils import (
@@ -26,6 +28,7 @@ async def execute_sql_query(sql: str) -> str:
         sql: The complete SQL query string to execute.
     """
     try:
+        # Run the SQL query in a separate thread to avoid blocking
         sdk_result = await asyncio.to_thread(execute_databricks_sql, sql_query=sql)
         
         status = sdk_result.get("status")
@@ -43,6 +46,9 @@ async def execute_sql_query(sql: str) -> str:
             # Should not happen if execute_databricks_sql always returns a known status
             return f"Received an unexpected status from query execution: {status}. Result: {sdk_result}"
             
+    except asyncio.CancelledError:
+        # Handle cancellation gracefully
+        return "Query execution was cancelled by user."
     except Exception as e:
         return f"An unexpected error occurred while executing SQL query: {str(e)}"
 
@@ -92,6 +98,8 @@ async def describe_uc_table(full_table_name: str, include_lineage: Optional[bool
             include_lineage=include_lineage
         )
         return details_markdown
+    except asyncio.CancelledError:
+        return f"Table description for '{full_table_name}' was cancelled by user."
     except ImportError as e:
         return f"Error initializing Databricks SDK utilities: {str(e)}. Please ensure DATABRICKS_HOST and DATABRICKS_TOKEN are set."
     except Exception as e:
@@ -115,6 +123,8 @@ async def describe_uc_catalog(catalog_name: str) -> str:
             catalog_name=catalog_name
         )
         return summary_markdown
+    except asyncio.CancelledError:
+        return f"Catalog description for '{catalog_name}' was cancelled by user."
     except ImportError as e:
         return f"Error initializing Databricks SDK utilities: {str(e)}. Please ensure DATABRICKS_HOST and DATABRICKS_TOKEN are set."
     except Exception as e:
@@ -144,6 +154,8 @@ async def describe_uc_schema(catalog_name: str, schema_name: str, include_column
             include_columns=include_columns
         )
         return details_markdown
+    except asyncio.CancelledError:
+        return f"Schema description for '{catalog_name}.{schema_name}' was cancelled by user."
     except ImportError as e:
         return f"Error initializing Databricks SDK utilities: {str(e)}. Please ensure DATABRICKS_HOST and DATABRICKS_TOKEN are set."
     except Exception as e:
@@ -161,10 +173,28 @@ async def list_uc_catalogs() -> str:
     try:
         summary_markdown = await asyncio.to_thread(get_uc_all_catalogs_summary)
         return summary_markdown
+    except asyncio.CancelledError:
+        return "Catalog listing was cancelled by user."
     except ImportError as e:
         return f"Error initializing Databricks SDK utilities: {str(e)}. Please ensure DATABRICKS_HOST and DATABRICKS_TOKEN are set."
     except Exception as e:
         return f"Error listing catalogs: {str(e)}"
 
+def handle_shutdown(signum, frame):
+    """Handle graceful shutdown on interrupt signals"""
+    sys.stderr.write("Databricks MCP Server: Received shutdown signal, cleaning up...\n")
+    sys.exit(0)
+
 if __name__ == "__main__":
-    mcp.run(transport='stdio')
+    # Register signal handlers for graceful shutdown
+    signal.signal(signal.SIGINT, handle_shutdown)
+    signal.signal(signal.SIGTERM, handle_shutdown)
+    
+    try:
+        mcp.run(transport='stdio')
+    except KeyboardInterrupt:
+        sys.stderr.write("Databricks MCP Server: Interrupted by user\n")
+        sys.exit(0)
+    except Exception as e:
+        sys.stderr.write(f"Databricks MCP Server: Fatal error: {e}\n")
+        sys.exit(1)
