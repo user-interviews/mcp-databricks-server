@@ -73,6 +73,16 @@ echo ""
 
 # Create virtual environment and install dependencies
 VENV_DIR="$SCRIPT_DIR/.venv"
+
+# Remove stale venv if it was created with an older Python
+if [ -d "$VENV_DIR" ]; then
+    VENV_MINOR=$("$VENV_DIR/bin/python" -c "import sys; print(sys.version_info.minor)" 2>/dev/null || echo "0")
+    if [ "$VENV_MINOR" -lt 10 ]; then
+        echo -e "${YELLOW}Removing old virtual environment (Python 3.$VENV_MINOR)...${NC}"
+        rm -rf "$VENV_DIR"
+    fi
+fi
+
 echo -e "${YELLOW}Setting up virtual environment...${NC}"
 
 if command -v uv &> /dev/null; then
