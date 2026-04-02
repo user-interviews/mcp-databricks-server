@@ -40,17 +40,35 @@ if [ ! -f "$MAIN_PY" ]; then
     exit 1
 fi
 
-# Check Python 3
+# Find Python 3.10+ (check brew paths first, then system python3)
 echo -e "${YELLOW}Checking Python...${NC}"
-if ! command -v python3 &> /dev/null; then
-    echo -e "${RED}Error: Python 3 is not installed.${NC}"
-    echo "Please install Python 3 from https://www.python.org/downloads/"
+PYTHON_CMD=""
+for candidate in /opt/homebrew/bin/python3 /usr/local/bin/python3 python3; do
+    if command -v "$candidate" &> /dev/null; then
+        MINOR=$("$candidate" -c "import sys; print(sys.version_info.minor)" 2>/dev/null || echo "0")
+        if [ "$MINOR" -ge 10 ]; then
+            PYTHON_CMD="$candidate"
+            break
+        fi
+    fi
+done
+
+if [ -z "$PYTHON_CMD" ]; then
+    FOUND_VERSION=$(python3 --version 2>/dev/null || echo "None")
+    echo -e "${RED}Error: Python 3.10 or newer is required, but found: $FOUND_VERSION${NC}"
+    echo ""
+    echo "To install a newer version:"
+    echo "  Option 1: brew install python"
+    echo "  Option 2: Download from https://www.python.org/downloads/"
+    echo ""
+    echo "After installing, verify with: python3 --version"
     echo ""
     read -p "Press Enter to exit..."
     exit 1
 fi
-PYTHON_VERSION=$(python3 --version)
-echo -e "${GREEN}Found: $PYTHON_VERSION${NC}"
+
+PYTHON_VERSION=$("$PYTHON_CMD" --version)
+echo -e "${GREEN}Found: $PYTHON_VERSION ($PYTHON_CMD)${NC}"
 echo ""
 
 # Create virtual environment and install dependencies
@@ -63,12 +81,12 @@ if command -v uv &> /dev/null; then
     uv pip install -r "$REQUIREMENTS" --quiet -p "$VENV_DIR"
 else
     echo "Using pip..."
-    python3 -m venv "$VENV_DIR"
+    "$PYTHON_CMD" -m venv "$VENV_DIR"
     "$VENV_DIR/bin/pip" install -r "$REQUIREMENTS" --quiet
 fi
 
 # Use the venv's python for running the server
-PYTHON_CMD="$VENV_DIR/bin/python"
+VENV_PYTHON="$VENV_DIR/bin/python"
 
 echo -e "${GREEN}Dependencies installed!${NC}"
 echo ""
@@ -134,7 +152,7 @@ if 'mcpServers' not in config:
     config['mcpServers'] = {}
 
 config['mcpServers']['databricks'] = {
-    "command": "$PYTHON_CMD",
+    "command": "$VENV_PYTHON",
     "args": ["$MAIN_PY"],
     "env": {
         "DATABRICKS_HOST": "$DATABRICKS_HOST",
@@ -153,7 +171,7 @@ else
 {
   "mcpServers": {
     "databricks": {
-      "command": "$PYTHON_CMD",
+      "command": "$VENV_PYTHON",
       "args": ["$MAIN_PY"],
       "env": {
         "DATABRICKS_HOST": "$DATABRICKS_HOST",
